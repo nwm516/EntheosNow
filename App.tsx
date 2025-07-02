@@ -102,7 +102,16 @@ export default function App() {
 
     // Function to determine which side of the diagonal was touched
     const isPointInWarmTriangle = (x: number, y: number) => {
+        // Our visual diagonal goes from bottom-left (0, height) to top-right (widht, 0)
+        // Line equation: y = height - (height * x) / width
+        // Points BELOW this line are in the warm triangle
         const diagonalY = height - (height * x) / width;
+
+        console.log(`Touch at (${x.toFixed(1)}, ${y.toFixed(1)})`);
+        console.log(`Diagonal at x=${x.toFixed(1)} should be y=${diagonalY.toFixed(1)}`);
+        console.log(`Point is ${y > diagonalY ? 'BELOW' : 'ABOVE'} diagonal line`);
+        console.log(`Should be ${y > diagonalY ? 'WARM' : 'COOL'}`);
+
         return y > diagonalY;
     };
 
@@ -113,9 +122,9 @@ export default function App() {
             const point = { x: locationX, y: locationY };
 
             if (isPointInWarmTriangle(locationX, locationY)) {
-                handleWarmPress(point);
-            } else {
                 handleCoolPress(point);
+            } else {
+                handleWarmPress(point);
             }
         },
     });
