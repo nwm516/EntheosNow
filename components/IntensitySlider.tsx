@@ -11,53 +11,57 @@ interface IntensitySliderProps {
 const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderProps) => {
     const [startPoint, setStartPoint] = useState<{x: number, y: number} | null>(initialTouchPoint);
     const [intensity, setIntensity] = useState(0); // 0 to 1
-    const [dragDistance, setDragDistance] = useState(0);
+    const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
+    const [lastAngle, setLastAngle] = useState<number | null>(null);
 
-    // Debug logging to see coordinate differences
-    React.useEffect(() => {
-        if (initialTouchPoint) {
-            console.log('IntensitySlider received initial point:', initialTouchPoint);
-        }
-    }, [initialTouchPoint]);
+    //Helper function to calculate angle from center
+    const calculateAngle = (x: number, y: number, centerX: number, centerY: number) => {
+        return Math.atan2(y - centerY, x - centerX);
+    };
+
+    // Handle function to calculate angle difference (handling wraparound)
+   const getAngleDifference = (angle1: number, angle2: number) => {
+       let diff = angle1 - angle2;
+       // Handle wraparound (e.g., from -pi to pi)
+       if (diff > Math.PI) diff -= 2 * Math.PI;
+       if (diff < -Math.PI) diff += 2 * Math.PI;
+       return diff;
+   };
 
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onPanResponderGrant: (evt) => {
-            // Record where user first touched
-            const { locationX, locationY } = evt.nativeEvent;
-            const newPoint = { x: locationX, y: locationY };
-            setStartPoint(newPoint);
-
-            console.log('New touch started at:', newPoint);
-            if (initialTouchPoint) {
-                console.log('Difference from initial:', {
-                    x: newPoint.x - initialTouchPoint.x,
-                    y: newPoint.y - initialTouchPoint.y
-                });
-            }
-        },
-        onPanResponderMove: (evt) => {
             if (!startPoint) return;
 
+            const {locationX, locationY} = evt.nativeEvent;
+            const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
+            setLastAngle(initialAngle);
+
+            console.log('Started spiral drag from angle: ', (initialAngle * 180 / Math.PI).toFixed(1), 'degrees');
+        },
+        onPanResponderMove: (evt) => {
+            if (!startPoint || lastAngle === null) return;
+
             const { locationX, locationY } = evt.nativeEvent;
+            const currentAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
+            const angleDiff = getAngleDifference(currentAngle, lastAngle);
 
-            // Calculate distance from start point
-            const deltaX = locationX - startPoint.x;
-            const deltaY = locationY - startPoint.y;
-            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            // Update cumulative rotation
+            const newTotalRotation = totalRotation + angleDiff;
+            setTotalRotation(newTotalRotation);
+            setLastAngle(currentAngle);
 
-            // Convert distance to intensity (0 to 1)
-            // Max distance of 200 pixels = intensity 1.0
-            const newIntensity = Math.min(distance / 200, 1);
-
-            setDragDistance(distance);
+            // Convert rotation to intensity (0 to 1)
+            // One full clockwise rotation (2*Pi) = intensity 1.0
+            const newIntensity = Math.max(0, Math.min(1, newTotalRotation / (2 * Math.PI)));
             setIntensity(newIntensity);
 
-            console.log('Drag distance:', Math.round(distance), 'Intensity:', newIntensity.toFixed(2));
+            const direction = angleDiff > 0 ? 'clockwise' : 'counter-clockwise';
+            console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
-            console.log('Released! Final intensity:', intensity.toFixed(2));
-            // Here we'll eventually trigger the long press confirmation
+        console.log('Released! Final intensity: ', intensity.toFixed(2));
+        setLastAngle(null);
         },
     });
 
@@ -96,16 +100,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
                     opacity: intensity * 0.2, // Subtle glow
                 }]} />
             )}
-
-            {/* Debug info */}
-            <View style={styles.debugInfo}>
-                <Text style={styles.debugText}>
-                    Distance: {Math.round(dragDistance)}px
-                </Text>
-                <Text style={styles.debugText}>
-                    Intensity: {(intensity * 100).toFixed(0)}%
-                </Text>
-            </View>
 
             {/* Start point indicator */}
             {startPoint && (
