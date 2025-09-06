@@ -13,13 +13,28 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
     const [intensity, setIntensity] = useState(0); // 0 to 1
     const [dragDistance, setDragDistance] = useState(0);
 
+    // Debug logging to see coordinate differences
+    React.useEffect(() => {
+        if (initialTouchPoint) {
+            console.log('IntensitySlider received initial point:', initialTouchPoint);
+        }
+    }, [initialTouchPoint]);
+
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onPanResponderGrant: (evt) => {
             // Record where user first touched
             const { locationX, locationY } = evt.nativeEvent;
-            setStartPoint({ x: locationX, y: locationY });
-            console.log('Started drag at:', locationX, locationY);
+            const newPoint = { x: locationX, y: locationY };
+            setStartPoint(newPoint);
+
+            console.log('New touch started at:', newPoint);
+            if (initialTouchPoint) {
+                console.log('Difference from initial:', {
+                    x: newPoint.x - initialTouchPoint.x,
+                    y: newPoint.y - initialTouchPoint.y
+                });
+            }
         },
         onPanResponderMove: (evt) => {
             if (!startPoint) return;
@@ -97,6 +112,9 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
                 <View style={[styles.startIndicator, {
                     left: startPoint.x - 5,
                     top: startPoint.y - 5,
+                    backgroundColor: 'white',
+                    borderWidth: 2,
+                    borderColor: 'red',
                 }]} />
             )}
         </View>
