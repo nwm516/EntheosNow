@@ -109,7 +109,7 @@ export default function App() {
 
         console.log(`Touch at (${x.toFixed(1)}, ${y.toFixed(1)})`);
         console.log(`Diagonal at x=${x.toFixed(1)} should be y=${diagonalY.toFixed(1)}`);
-        console.log(`Point is ${y > diagonalY ? 'BELOW' : 'ABOVE'} diagonal line`);
+        console.log(`Point is ${y > diagonalY ? 'ABOVE' : 'BELOW'} diagonal line`);
         console.log(`Should be ${y > diagonalY ? 'WARM' : 'COOL'}`);
 
         return y > diagonalY;
