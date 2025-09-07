@@ -130,8 +130,20 @@ export default function App() {
     });
 
     if (selectedSide && !isTransitioning) {
-        // Show intensity slider after transition is complete
-        return <IntensitySlider selectedSide={selectedSide} initialTouchPoint={touchPoint} />;
+        return (
+            <IntensitySlider
+                selectedSide={selectedSide}
+                initialTouchPoint={touchPoint}
+                onBack={() => {
+                    setSelectedSide(null);
+                    setTouchPoint(null);
+                    // Reset animation values
+                    transitionScale.setValue(1);
+                    backgroundOpacity.setValue(1);
+                    circleScale.setValue(0);
+                }}
+            />
+        );
     }
 
     return (

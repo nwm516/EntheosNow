@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Dimensions, Animated, PanResponder, Text } from 'react-native';
+import { StyleSheet, View, Dimensions, Animated, PanResponder, TouchableOpacity } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 interface IntensitySliderProps {
     selectedSide: 'warm' | 'cool';
     initialTouchPoint: {x: number; y: number} | null;
+    onBack: () => void;
 }
 
-const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderProps) => {
-    const [startPoint, setStartPoint] = useState<{x: number, y: number} | null>(initialTouchPoint);
+const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensitySliderProps) => {
+    const startPoint = initialTouchPoint;
+
     const [intensity, setIntensity] = useState(0); // 0 to 1
     const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
     const [lastAngle, setLastAngle] = useState<number | null>(null);
+
+    const handleBack = () => {
+        console.log('Going back to diagonal screen...');
+        onBack();
+    }
 
     //Helper function to calculate angle from center
     const calculateAngle = (x: number, y: number, centerX: number, centerY: number) => {
@@ -33,7 +40,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
         onPanResponderGrant: (evt) => {
             if (!startPoint) return;
 
-            const {locationX, locationY} = evt.nativeEvent;
+            const { locationX, locationY } = evt.nativeEvent;
             const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
             setLastAngle(initialAngle);
 
@@ -43,6 +50,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
             if (!startPoint || lastAngle === null) return;
 
             const { locationX, locationY } = evt.nativeEvent;
+
+            // Regular spiral interaction
             const currentAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
             const angleDiff = getAngleDifference(currentAngle, lastAngle);
 
@@ -52,7 +61,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
             setLastAngle(currentAngle);
 
             // Convert rotation to intensity (0 to 1)
-            // One full clockwise rotation (2*Pi) = intensity 1.0
             const newIntensity = Math.max(0, Math.min(1, newTotalRotation / (2 * Math.PI)));
             setIntensity(newIntensity);
 
@@ -60,13 +68,28 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint }: IntensitySliderPro
             console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
-        console.log('Released! Final intensity: ', intensity.toFixed(2));
-        setLastAngle(null);
+            console.log('Released! Final intensity: ', intensity.toFixed(2));
+            setLastAngle(null);
         },
     });
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
+
+            {/* Subtle back button */}
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                activeOpacity={0.6}
+            >
+                <View style={styles.backIcon}>
+                    <View style={[styles.backArrow, {
+                        borderRightColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2'
+                    }]} />
+                </View>
+
+            </TouchableOpacity>
+
             {/* Dark animated background */}
             <Animated.View style={[styles.darkBackground, {
                 opacity: 0.9 + (intensity * 0.1), // Gets slightly darker with intensity
@@ -143,18 +166,6 @@ const styles = StyleSheet.create({
         borderRadius: 1000,
         // Larger, more transparent circle for glow effect
     },
-    debugInfo: {
-        position: 'absolute',
-        top: 100,
-        left: 20,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        padding: 10,
-        borderRadius: 5,
-    },
-    debugText: {
-        color: 'white',
-        fontSize: 16,
-    },
     startIndicator: {
         position: 'absolute',
         width: 10,
@@ -163,6 +174,32 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.5)',
+    },
+    backButton: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    backIcon: {
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    backArrow: {
+        width: 0,
+        height: 0,
+        borderTopWidth: 8,
+        borderBottomWidth: 8,
+        borderRightWidth: 12,
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+        // borderRightColor will be set dynamically
     },
 });
 
