@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Dimensions, Animated, PanResponder, TouchableOpacity } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -11,15 +11,35 @@ interface IntensitySliderProps {
 
 const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensitySliderProps) => {
     const startPoint = initialTouchPoint;
-
     const [intensity, setIntensity] = useState(0); // 0 to 1
     const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
     const [lastAngle, setLastAngle] = useState<number | null>(null);
+    const [isTransitioningBack, setIsTransitioningBack] = useState(false);
+
+    // Animation values for back transition
+    const circleScale = useRef(new Animated.Value(1)).current;
+    const backgroundOpacity = useRef(new Animated.Value(1)).current;
 
     const handleBack = () => {
-        console.log('Going back to diagonal screen...');
-        onBack();
-    }
+        console.log('Starting back transition...');
+        setIsTransitioningBack(true);
+
+        Animated.parallel([
+            Animated.timing(circleScale, {
+                toValue: 0.1,
+                duration: 600, // CHANGE this to 300
+                useNativeDriver: true,
+            }),
+            Animated.timing(backgroundOpacity, {
+                toValue: 0,
+                duration: 600, // CHANGE this to 300
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            console.log('Back transition complete, returning to diagonal');
+            onBack();
+        });
+    };
 
     //Helper function to calculate angle from center
     const calculateAngle = (x: number, y: number, centerX: number, centerY: number) => {
@@ -36,9 +56,9 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
    };
 
     const panResponder = PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
         onPanResponderGrant: (evt) => {
-            if (!startPoint) return;
+            if (!startPoint || isTransitioningBack) return;
 
             const { locationX, locationY } = evt.nativeEvent;
             const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
@@ -68,6 +88,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
+            if (isTransitioningBack) return;
             console.log('Released! Final intensity: ', intensity.toFixed(2));
             setLastAngle(null);
         },
@@ -75,63 +96,69 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
-
             {/* Subtle back button */}
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleBack}
                 activeOpacity={0.6}
+                disabled={isTransitioningBack}  // Disable during transition
             >
-                <View style={styles.backIcon}>
+                <Animated.View
+                    style={[styles.backIcon, { opacity: backgroundOpacity }]}
+                >
                     <View style={[styles.backArrow, {
                         borderRightColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2'
                     }]} />
-                </View>
-
+                </Animated.View>
             </TouchableOpacity>
 
             {/* Dark animated background */}
             <Animated.View style={[styles.darkBackground, {
-                opacity: 0.9 + (intensity * 0.1), // Gets slightly darker with intensity
+                opacity: backgroundOpacity,
             }]} />
 
             {/* Subtle moving pattern background */}
-            <View style={styles.patternBackground}>
+            <Animated.View style={[styles.patternBackground, {
+                opacity: backgroundOpacity
+            }]}>
                 {/* We can add animated dark patterns here */}
-            </View>
+            </Animated.View>
 
             {/* The focused color circle that grows from touch point */}
             {startPoint && (
-                <View style={[styles.focusCircle, {
+                <Animated.View style={[styles.focusCircle, {
                     left: startPoint.x - (intensity * 150), // Center the circle
                     top: startPoint.y - (intensity * 150),
                     width: intensity * 300,  // Circle grows with intensity
                     height: intensity * 300,
                     backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2', // Original colors
                     opacity: 0.8 + (intensity * 0.2), // Gets more opaque with intensity
+                    transform: [{ scale: circleScale }]
                 }]} />
             )}
 
             {/* Subtle glow effect around the circle */}
             {startPoint && intensity > 0.3 && (
-                <View style={[styles.glowCircle, {
+                <Animated.View style={[styles.glowCircle, {
                     left: startPoint.x - (intensity * 180),
                     top: startPoint.y - (intensity * 180),
                     width: intensity * 360,
                     height: intensity * 360,
                     backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
                     opacity: intensity * 0.2, // Subtle glow
+                    transform: [{ scale: circleScale }]
                 }]} />
             )}
 
             {/* Start point indicator */}
             {startPoint && (
-                <View style={[styles.startIndicator, {
+                <Animated.View style={[styles.startIndicator, {
                     left: startPoint.x - 5,
                     top: startPoint.y - 5,
                     backgroundColor: 'white',
                     borderWidth: 2,
                     borderColor: 'red',
+                    opacity: backgroundOpacity, // Fade with background
                 }]} />
             )}
         </View>

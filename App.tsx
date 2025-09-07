@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Dimensions, Animated, PanResponder } from 'react-native';
+import { StyleSheet, View, Dimensions, Animated, PanResponder, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IntensitySlider } from './components/IntensitySlider';
 
@@ -8,12 +8,12 @@ const { width, height } = Dimensions.get('window');
 export default function App() {
     const warmPulse = useRef(new Animated.Value(1)).current;
     const coolOpacity = useRef(new Animated.Value(1)).current;
+
     const [selectedSide, setSelectedSide] = useState<'warm' | 'cool' | null>(null);
     const [touchPoint, setTouchPoint] = useState<{x: number, y: number} | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     // Animation values for transition
-    const transitionScale = useRef(new Animated.Value(1)).current;
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
     const circleScale = useRef(new Animated.Value(0)).current;
 
@@ -66,26 +66,19 @@ export default function App() {
 
         // Start the transition animation
         Animated.parallel([
-            // Shrink the chosen color area
-            Animated.timing(transitionScale, {
-                toValue: 0,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            // Fade background to dark
+            // Fade both triangles to black
             Animated.timing(backgroundOpacity, {
                 toValue: 0,
                 duration: 800,
                 useNativeDriver: true,
             }),
-            // Grow the starting circle
+            // Grow circle at touch point
             Animated.timing(circleScale, {
                 toValue: 1,
                 duration: 800,
                 useNativeDriver: true,
             }),
         ]).start(() => {
-            // Transition complete
             setIsTransitioning(false);
         });
     };
@@ -135,12 +128,30 @@ export default function App() {
                 selectedSide={selectedSide}
                 initialTouchPoint={touchPoint}
                 onBack={() => {
-                    setSelectedSide(null);
-                    setTouchPoint(null);
-                    // Reset animation values
-                    transitionScale.setValue(1);
-                    backgroundOpacity.setValue(1);
-                    circleScale.setValue(0);
+                    console.log('Starting reverse transition...');
+                    setIsTransitioning(true);
+
+                    Animated.sequence([
+                        // Circle disappears quickly
+                        Animated.timing(circleScale, {
+                            toValue: 0,
+                            duration: 200,
+                            useNativeDriver: true,
+                        }),
+                        // Then colors fade in
+                        Animated.timing(backgroundOpacity, {
+                            toValue: 1,
+                            duration: 250,
+                            useNativeDriver: true,
+                        }),
+                    ]).start(() => {
+                        setSelectedSide(null);
+                        setTouchPoint(null);
+                        setIsTransitioning(false);
+
+                        backgroundOpacity.setValue(1);
+                        circleScale.setValue(0);
+                    });
                 }}
             />
         );
@@ -151,10 +162,9 @@ export default function App() {
             {/* Cool background with subtle movement */}
             <Animated.View
                 style={[
-                    styles.coolBackground,
+                    styles.coolTriangle,
                     {
-                        opacity: coolOpacity,
-                        transform: [{ scale: transitionScale }]
+                        opacity: Animated.multiply(coolOpacity, backgroundOpacity),
                     }
                 ]}
             />
@@ -164,9 +174,7 @@ export default function App() {
                 style={[
                     styles.warmTriangle,
                     {
-                        transform: [
-                            { scale: warmPulse },
-                        ]
+                        opacity: Animated.multiply(warmPulse, backgroundOpacity),
                     }
                 ]}
             />
@@ -220,11 +228,17 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    coolBackground: {
+    coolTriangle: {
         position: 'absolute',
-        width: width,
-        height: height,
-        backgroundColor: '#4A90E2',
+        top: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        borderStyle: 'solid',
+        borderLeftWidth: width,
+        borderBottomWidth: height,
+        borderLeftColor: 'transparent',
+        borderBottomColor: '#4A90E2',
     },
     warmTriangle: {
         position: 'absolute',
@@ -233,8 +247,8 @@ const styles = StyleSheet.create({
         width: 0,
         height: 0,
         borderStyle: 'solid',
-        borderRightWidth: width * 1.1,
-        borderTopWidth: height * 1.1,
+        borderRightWidth: width,
+        borderTopWidth: height,
         borderRightColor: 'transparent',
         borderTopColor: '#FF6B35',
     },
