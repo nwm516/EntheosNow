@@ -15,6 +15,9 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
     const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
     const [lastAngle, setLastAngle] = useState<number | null>(null);
     const [isTransitioningBack, setIsTransitioningBack] = useState(false);
+    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+    const [isLongPressing, setIsLongPressing] = useState(false);
+    const [showConfirmationPulse, setShowConfirmationPulse] = useState(false);
 
     // Animation values for back transition
     const circleScale = useRef(new Animated.Value(1)).current;
@@ -56,15 +59,21 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
    };
 
     const panResponder = PanResponder.create({
-        onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
+        onStartShouldSetPanResponder: () => true,   // Disable during transition
         onPanResponderGrant: (evt) => {
-            if (!startPoint || isTransitioningBack) return;
+            if (!startPoint) return;
 
             const { locationX, locationY } = evt.nativeEvent;
             const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
             setLastAngle(initialAngle);
 
-            console.log('Started spiral drag from angle: ', (initialAngle * 180 / Math.PI).toFixed(1), 'degrees');
+            // Start long press timer
+            const timer = setTimeout(() => {
+                triggerLongPressConfirmation();
+            }, 800);
+
+            setLongPressTimer(timer);
+            console.log('Started spiral drag, long press timer active');
         },
         onPanResponderMove: (evt) => {
             if (!startPoint || lastAngle === null) return;
@@ -84,15 +93,49 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             const newIntensity = Math.max(0, Math.min(1, newTotalRotation / (2 * Math.PI)));
             setIntensity(newIntensity);
 
+            // Check if still within selection node for long press
+            const distanceFromAnchor = Math.sqrt(
+                Math.pow(locationX - startPoint.x, 2) +
+                Math.pow(locationY - startPoint.y, 2)
+            );
+
+            const currentNodeRadius = newIntensity * 150;   // Match circle radius
+
+            // If outside node selection and tolerance, cancel long press
+            if (distanceFromAnchor > currentNodeRadius + 50) {  // +50px tolerance
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    setLongPressTimer(null);
+                    setShowConfirmationPulse(false);
+                }
+            }
+
             const direction = angleDiff > 0 ? 'clockwise' : 'counter-clockwise';
             console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
-            if (isTransitioningBack) return;
-            console.log('Released! Final intensity: ', intensity.toFixed(2));
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                setLongPressTimer(null);
+            }
+            setIsLongPressing(false);
+            setShowConfirmationPulse(false);
             setLastAngle(null);
+            console.log('Released! Final intensity: ', intensity.toFixed(2));
         },
     });
+
+    const triggerLongPressConfirmation = () => {
+        setIsLongPressing(true);
+        setShowConfirmationPulse(true);
+        console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
+
+        //ToDo: Trigger transition to visualizer and music screen
+        console.log('Ready to transition to visualizer with: ', {
+            energyState: selectedSide,
+            intensityLevel: intensity,
+        });
+    };
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
@@ -161,6 +204,23 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
                     opacity: backgroundOpacity, // Fade with background
                 }]} />
             )}
+
+            {/* Confirmation pulse when long press is detected */}
+            {showConfirmationPulse && startPoint && (
+                <Animated.View
+                    style={[
+                        styles.confirmationPulse,
+                        {
+                            left: startPoint.x - (intensity * 180),
+                            top: startPoint.y - (intensity * 180),
+                            width: intensity * 360,
+                            height: intensity * 360,
+                            backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
+                            opacity: 0.4,
+                        }
+                    ]}
+                />
+            )}
         </View>
     );
 };
@@ -227,6 +287,13 @@ const styles = StyleSheet.create({
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
         // borderRightColor will be set dynamically
+    },
+    confirmationPulse: {
+        position: 'absolute',
+        borderRadius: 1000,
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.8)',
+        // Subtle animations could be added here later...
     },
 });
 
