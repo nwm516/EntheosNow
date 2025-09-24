@@ -13,9 +13,12 @@ interface IntensitySliderProps {
 const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmIntensity }: IntensitySliderProps) => {
     const startPoint = initialTouchPoint;
     const [intensity, setIntensity] = useState(0); // 0 to 1
-    const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
+    const [netRotation, setNetRotation] = useState(0); // Tracks cumulative rotations
     const [lastAngle, setLastAngle] = useState<number | null>(null);
     const [isTransitioningBack, setIsTransitioningBack] = useState(false);
+    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+    const [isLongPressing, setIsLongPressing] = useState(false);
+    const [showConfirmationPulse, setShowConfirmationPulse] = useState(false);
 
     // Animation values for back transition
     const circleScale = useRef(new Animated.Value(1)).current;
@@ -30,12 +33,12 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
         Animated.parallel([
             Animated.timing(circleScale, {
                 toValue: 0.1,
-                duration: 600, // CHANGE this to 300
+                duration: 300, // CHANGE this to 300
                 useNativeDriver: true,
             }),
             Animated.timing(backgroundOpacity, {
                 toValue: 0,
-                duration: 600, // CHANGE this to 300
+                duration: 300, // CHANGE this to 300
                 useNativeDriver: true,
             }),
         ]).start(() => {
@@ -70,7 +73,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
         onPanResponderGrant: (evt) => {
-            if (!startPoint || isTransitioningBack) return;
+            if (!startPoint) return;
 
             const { locationX, locationY } = evt.nativeEvent;
             const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
@@ -83,7 +86,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
 
             setLongPressTimer(timer);
             console.log('Started spiral drag, long press timer active');
-
         },
         onPanResponderMove: (evt) => {
             if (!startPoint || lastAngle === null) return;
@@ -95,12 +97,12 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
             const angleDiff = getAngleDifference(currentAngle, lastAngle);
 
             // Update cumulative rotation
-            const newTotalRotation = totalRotation + angleDiff;
-            setTotalRotation(newTotalRotation);
+            const newNetRotation = netRotation + angleDiff;
+            setNetRotation(newNetRotation);
             setLastAngle(currentAngle);
 
             // Convert rotation to intensity (0 to 1)
-            const newIntensity = Math.max(0, Math.min(1, newTotalRotation / (2 * Math.PI)));
+            const newIntensity = Math.max(0, Math.min(1, newNetRotation / (2 * Math.PI)));
             setIntensity(newIntensity);
 
             // Check if still within selection node for long press
@@ -120,7 +122,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
             }
 
             const direction = angleDiff > 0 ? 'clockwise' : 'counter-clockwise';
-            console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
+            const rotationDegrees = newNetRotation * 180 / Math.PI;
+            console.log(`${direction}: Net rotation ${rotationDegrees.toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
             // Cancel long press timer on release
@@ -134,6 +137,18 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
             console.log('Released! Final intensity: ', intensity.toFixed(2));
         },
     });
+
+    const triggerLongPressConfirmation = () => {
+        setIsLongPressing(true);
+        setShowConfirmationPulse(true);
+        console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
+
+        //ToDo: Trigger transition to visualizer and music screen
+        console.log('Ready to transition to visualizer with: ', {
+            energyState: selectedSide,
+            intensityLevel: intensity,
+        });
+    };
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
@@ -165,6 +180,15 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 {/* We can add animated dark patterns here */}
             </Animated.View>
 
+            {/* Starting point indicator - shows where to begin spiraling */}
+            {startPoint && intensity === 0 && (
+                <View style={[styles.startingDot, {
+                    left: startPoint.x - 8,
+                    top: startPoint.y - 8,
+                    borderColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
+                }]} />
+            )}
+
             {/* The focused color circle that grows from touch point */}
             {startPoint && (
                 <Animated.View style={[styles.focusCircle, {
@@ -191,16 +215,21 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 }]} />
             )}
 
-            {/* Start point indicator */}
-            {startPoint && (
-                <Animated.View style={[styles.startIndicator, {
-                    left: startPoint.x - 5,
-                    top: startPoint.y - 5,
-                    backgroundColor: 'white',
-                    borderWidth: 2,
-                    borderColor: 'red',
-                    opacity: backgroundOpacity, // Fade with background
-                }]} />
+            {/* Confirmation pulse when long press is detected */}
+            {showConfirmationPulse && startPoint && (
+                <Animated.View
+                    style={[
+                        styles.confirmationPulse,
+                        {
+                            left: startPoint.x - (intensity * 180),
+                            top: startPoint.y - (intensity * 180),
+                            width: intensity * 360,
+                            height: intensity * 360,
+                            backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
+                            opacity: 0.4,
+                        }
+                    ]}
+                />
             )}
         </View>
     );
@@ -223,6 +252,16 @@ const styles = StyleSheet.create({
         height: height,
         // We can add subtle animated patterns here later
     },
+    startingDot: {
+        position: 'absolute',
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        // borderColor will be set dynamically to match energy choice
+        opacity: 0.8,
+    },
     focusCircle: {
         position: 'absolute',
         borderRadius: 1000,
@@ -233,15 +272,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         borderRadius: 1000,
         // Larger, more transparent circle for glow effect
-    },
-    startIndicator: {
-        position: 'absolute',
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: 'white',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
     },
     backButton: {
         position: 'absolute',
@@ -268,6 +298,13 @@ const styles = StyleSheet.create({
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
         // borderRightColor will be set dynamically
+    },
+    confirmationPulse: {
+        position: 'absolute',
+        borderRadius: 1000,
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.8)',
+        // Subtle animations could be added here later...
     },
 });
 
