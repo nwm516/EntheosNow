@@ -7,9 +7,10 @@ interface IntensitySliderProps {
     selectedSide: 'warm' | 'cool';
     initialTouchPoint: {x: number; y: number} | null;
     onBack: () => void;
+    onConfirmIntensity?: (energyState: 'warm' | 'cool', intensity: number) => void;
 }
 
-const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensitySliderProps) => {
+const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmIntensity }: IntensitySliderProps) => {
     const startPoint = initialTouchPoint;
     const [intensity, setIntensity] = useState(0); // 0 to 1
     const [totalRotation, setTotalRotation] = useState(0); // Tracks cumulative rotations
@@ -19,6 +20,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
     // Animation values for back transition
     const circleScale = useRef(new Animated.Value(1)).current;
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
+
+    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
     const handleBack = () => {
         console.log('Starting back transition...');
@@ -55,6 +58,15 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
        return diff;
    };
 
+   // Long press logic
+    const triggerLongPressConfirmation = () => {
+
+        console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
+
+        // Call the parent callback to navigate to visualizer
+        onConfirmIntensity?.(selectedSide, intensity);
+    };
+
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
         onPanResponderGrant: (evt) => {
@@ -64,7 +76,14 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             const initialAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
             setLastAngle(initialAngle);
 
-            console.log('Started spiral drag from angle: ', (initialAngle * 180 / Math.PI).toFixed(1), 'degrees');
+            // Start long press timer
+            const timer = setTimeout(() => {
+                triggerLongPressConfirmation();
+            }, 800);    // 800 ms for long press
+
+            setLongPressTimer(timer);
+            console.log('Started spiral drag, long press timer active');
+
         },
         onPanResponderMove: (evt) => {
             if (!startPoint || lastAngle === null) return;
@@ -84,13 +103,36 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             const newIntensity = Math.max(0, Math.min(1, newTotalRotation / (2 * Math.PI)));
             setIntensity(newIntensity);
 
+            // Check if still within selection node for long press
+            const distanceFromAnchor = Math.sqrt(
+                Math.pow(locationX - startPoint.x, 2) +
+                Math.pow(locationY - startPoint.y, 2)
+            );
+
+            const currentNodeRadius = newIntensity * 150;
+
+            // Cancel long press if moved too far from center
+            if (distanceFromAnchor > currentNodeRadius + 50) {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    setLongPressTimer(null);
+                    //setShowConfirmationPulse(false);
+                }
+            }
+
             const direction = angleDiff > 0 ? 'clockwise' : 'counter-clockwise';
             console.log(`Rotation: ${direction}, Total: ${(newTotalRotation * 180 / Math.PI).toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
-            if (isTransitioningBack) return;
-            console.log('Released! Final intensity: ', intensity.toFixed(2));
+            // Cancel long press timer on release
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                setLongPressTimer(null);
+            }
+            //setIsLongPressing(false);
+            //setShowConfirmationPulse(false);
             setLastAngle(null);
+            console.log('Released! Final intensity: ', intensity.toFixed(2));
         },
     });
 
