@@ -116,7 +116,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 if (longPressTimer) {
                     clearTimeout(longPressTimer);
                     setLongPressTimer(null);
-                    //setShowConfirmationPulse(false);
                 }
             }
 
