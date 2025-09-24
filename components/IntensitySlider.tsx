@@ -7,9 +7,10 @@ interface IntensitySliderProps {
     selectedSide: 'warm' | 'cool';
     initialTouchPoint: {x: number; y: number} | null;
     onBack: () => void;
+    onConfirmIntensity?: (energyState: 'warm' | 'cool', intensity: number) => void;
 }
 
-const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensitySliderProps) => {
+const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmIntensity }: IntensitySliderProps) => {
     const startPoint = initialTouchPoint;
     const [intensity, setIntensity] = useState(0); // 0 to 1
     const [netRotation, setNetRotation] = useState(0); // Tracks cumulative rotations
@@ -22,6 +23,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
     // Animation values for back transition
     const circleScale = useRef(new Animated.Value(1)).current;
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
+
+    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
     const handleBack = () => {
         console.log('Starting back transition...');
@@ -58,6 +61,15 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
        return diff;
    };
 
+   // Long press logic
+    const triggerLongPressConfirmation = () => {
+
+        console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
+
+        // Call the parent callback to navigate to visualizer
+        onConfirmIntensity?.(selectedSide, intensity);
+    };
+
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
         onPanResponderGrant: (evt) => {
@@ -70,7 +82,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             // Start long press timer
             const timer = setTimeout(() => {
                 triggerLongPressConfirmation();
-            }, 800);
+            }, 800);    // 800 ms for long press
 
             setLongPressTimer(timer);
             console.log('Started spiral drag, long press timer active');
@@ -99,14 +111,13 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
                 Math.pow(locationY - startPoint.y, 2)
             );
 
-            const currentNodeRadius = newIntensity * 150;   // Match circle radius
+            const currentNodeRadius = newIntensity * 150;
 
-            // If outside node selection and tolerance, cancel long press
-            if (distanceFromAnchor > currentNodeRadius + 50) {  // +50px tolerance
+            // Cancel long press if moved too far from center
+            if (distanceFromAnchor > currentNodeRadius + 50) {
                 if (longPressTimer) {
                     clearTimeout(longPressTimer);
                     setLongPressTimer(null);
-                    setShowConfirmationPulse(false);
                 }
             }
 
@@ -115,12 +126,13 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack }: IntensityS
             console.log(`${direction}: Net rotation ${rotationDegrees.toFixed(1)}°, Intensity: ${newIntensity.toFixed(2)}`);
         },
         onPanResponderRelease: () => {
+            // Cancel long press timer on release
             if (longPressTimer) {
                 clearTimeout(longPressTimer);
                 setLongPressTimer(null);
             }
-            setIsLongPressing(false);
-            setShowConfirmationPulse(false);
+            //setIsLongPressing(false);
+            //setShowConfirmationPulse(false);
             setLastAngle(null);
             console.log('Released! Final intensity: ', intensity.toFixed(2));
         },

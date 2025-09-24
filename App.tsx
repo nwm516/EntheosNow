@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Dimensions, Animated, PanResponder, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IntensitySlider } from './components/IntensitySlider';
+import {MusicVisualizer} from "./components/MusicVisualizer";
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +17,9 @@ export default function App() {
     // Animation values for transition
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
     const circleScale = useRef(new Animated.Value(0)).current;
+
+    const [showVisualizer, setShowVisualizer] = useState(false);
+    const [confirmedIntensity, setConfirmedIntensity] = useState(0);
 
     useEffect(() => {
         // Warm side: gentle pulsing
@@ -122,7 +126,7 @@ export default function App() {
         },
     });
 
-    if (selectedSide && !isTransitioning) {
+    if (selectedSide && !isTransitioning && !showVisualizer) {
         return (
             <IntensitySlider
                 selectedSide={selectedSide}
@@ -152,6 +156,27 @@ export default function App() {
                         backgroundOpacity.setValue(1);
                         circleScale.setValue(0);
                     });
+                    setShowVisualizer(false);
+                }}
+                onConfirmIntensity={(energyState, intensity) => {
+                    console.log('Transitioning to visualizer with: ', { energyState, intensity });
+                    setConfirmedIntensity(intensity);
+                    setShowVisualizer(true);
+                }}
+            />
+        );
+    }
+
+    if (showVisualizer && selectedSide) {
+        return (
+            <MusicVisualizer
+                energyState={selectedSide}
+                intensityLevel={confirmedIntensity}
+                onBack={() => {
+                    console.log('Returning from visualizer to intensity slider');
+                    setShowVisualizer(false);
+                    // Note: This returns to IntensitySlider, not diagonal screen
+                    // selectedSide and touchPoint remain set
                 }}
             />
         );
