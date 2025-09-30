@@ -24,8 +24,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
     const circleScale = useRef(new Animated.Value(1)).current;
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
 
-    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
-
     const handleBack = () => {
         console.log('Starting back transition...');
         setIsTransitioningBack(true);
@@ -60,15 +58,6 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
        if (diff < -Math.PI) diff += 2 * Math.PI;
        return diff;
    };
-
-   // Long press logic
-    const triggerLongPressConfirmation = () => {
-
-        console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
-
-        // Call the parent callback to navigate to visualizer
-        onConfirmIntensity?.(selectedSide, intensity);
-    };
 
     const panResponder = PanResponder.create({
         onStartShouldSetPanResponder: () => !isTransitioningBack,   // Disable during transition
@@ -152,7 +141,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
-            {/* Subtle back button */}
+            {/* Subtle back button */}~
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleBack}
