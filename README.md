@@ -8,6 +8,12 @@ Accessing optimal mental states for performance, whether it's for athletics, cre
 **<h2>The Solution</h2>**
 Entheos Now uses subtle, gesture-based interactions to help users consciously select and calibrate their desired mental state. The app combines psychology principles with intuitive UX design to create an "undercurrent" experience; guidance that feels natural rather than prescriptive.
 
+## 🚀 Try the Demo
+
+**[Download Android APK](https://expo.dev/accounts/nwm516/projects/EntheosNow/builds/70a93c...)**
+
+*Android 5.0+. Enable "Install from Unknown Sources" when prompted.*
+
 **<h2>Core User Flow</h2>**
 
 1) Energy State Selection - Diagonal split interface for choosing warm (activation) or cool (calm) energy states
