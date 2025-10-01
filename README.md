@@ -4,15 +4,15 @@ A mobile performance state optimization app that helps users access flow states 
 
 ## 🚀 Try the Demo
 
-**[Download Android APK](https://expo.dev/accounts/nwm516/projects/EntheosNow/builds/c1a0df3d-5364-43fb-9459-c8f8ea707166)**<br>
+**[Download Android APK](https://expo.dev/accounts/nwm516/projects/EntheosNow/builds/479f7959-ba0c-472b-a1b3-44e249970efc)**<br>
 *Android 5.0+. Enable "Install from Unknown Sources" when prompted.*
 
 ## Screenshots
 <table>
   <tr>
-    <td><img src="screenshots/Diagonal.png" width="250"/></td>
-    <td><img src="screenshots/Warm_Selection_Node.png" width="250"/></td>
-    <td><img src="screenshots/Warm-visualizer.png" width="250"/></td>
+    <td><img src="/screenshots/Diagonal.png" width="250"/></td>
+    <td><img src="/screenshots/Warm_Selection_Node.png" width="250"/></td>
+    <td><img src="/screenshots/Warm_Visualizer.png" width="250"/></td>
   </tr>
   <tr>
     <td align="center">Energy State Selection</td>
