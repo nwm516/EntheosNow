@@ -132,16 +132,13 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
         setShowConfirmationPulse(true);
         console.log('Long press confirmed! Intensity: ', intensity.toFixed(2));
 
-        //ToDo: Trigger transition to visualizer and music screen
-        console.log('Ready to transition to visualizer with: ', {
-            energyState: selectedSide,
-            intensityLevel: intensity,
-        });
+       // Actually call the parent callback to navigate
+        onConfirmIntensity?.(selectedSide, intensity);
     };
 
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
-            {/* Subtle back button */}~
+            {/* Subtle back button */}
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleBack}
