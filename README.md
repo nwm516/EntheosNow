@@ -2,17 +2,30 @@
 
 A mobile performance state optimization app that helps users access flow states through intuitive gestural interactions and personalized music integration.
 
+## 🚀 Try the Demo
+
+**[Download Android APK](https://expo.dev/accounts/nwm516/projects/EntheosNow/builds/c1a0df3d-5364-43fb-9459-c8f8ea707166)**<br>
+*Android 5.0+. Enable "Install from Unknown Sources" when prompted.*
+
+## Screenshots
+<table>
+  <tr>
+    <td><img src="screenshots/Diagonal.png" width="250"/></td>
+    <td><img src="screenshots/Warm_Selection_Node.png" width="250"/></td>
+    <td><img src="screenshots/Warm-visualizer.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center">Energy State Selection</td>
+    <td align="center">Intensity Calibration</td>
+    <td align="center">Visual Reinforcement</td>
+  </tr>
+</table>
+
 **<h2>The Problem</h2>**
 Accessing optimal mental states for performance, whether it's for athletics, creative work, or presentations, typically requires extensive practice or external guidance. Most existing solutions are either too rigid (guided meditations) or too passive (background music apps), failing to engage users in the active process of state selection and intensity calibration.
 
 **<h2>The Solution</h2>**
 Entheos Now uses subtle, gesture-based interactions to help users consciously select and calibrate their desired mental state. The app combines psychology principles with intuitive UX design to create an "undercurrent" experience; guidance that feels natural rather than prescriptive.
-
-## 🚀 Try the Demo
-
-**[Download Android APK](https://expo.dev/accounts/nwm516/projects/EntheosNow/builds/70a93c...)**
-
-*Android 5.0+. Enable "Install from Unknown Sources" when prompted.*
 
 **<h2>Core User Flow</h2>**
 
