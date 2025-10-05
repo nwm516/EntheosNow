@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "expo": "53.0.22",
+    "expo-auth-session": "^7.0.8",
+    "expo-crypto": "^15.0.7",
     "expo-linear-gradient": "^14.1.5",
+    "expo-secure-store": "^15.0.7",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.5"
