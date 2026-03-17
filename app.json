@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "entheosnow",
     "name": "EntheosNow",
     "slug": "EntheosNow",
     "version": "1.0.0",
