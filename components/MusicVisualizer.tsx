@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Dimensions, Animated, TouchableOpacity } from 'react-native';
+import { MusicServiceManager } from '../services/MusicServiceManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,9 +11,32 @@ interface MusicVisualizerProps {
 }
 
 export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVisualizerProps) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const musicService = useRef(MusicServiceManager.getInstance()).current;
+
     const primaryFlow = useRef(new Animated.Value(0)).current;
     const secondaryFlow = useRef(new Animated.Value(0)).current;
     const pulseScale = useRef(new Animated.Value(1)).current;
+
+    // Initializing music on mount
+    useEffect(() => {
+        const initMusic = async () => {
+            try {
+                await musicService.initializeLocalProvider();
+                await musicService.playForState(energyState, intensityLevel);
+                setIsPlaying(true);
+            } catch (error) {
+                console.error('Failed to initialize music:', error);
+            }
+        };
+
+            initMusic();
+
+            // Cleanup on unmount
+            return () => {
+                musicService.stop();
+                };
+            }, []);
 
     useEffect(() => {
         const baseSpeed = 4000; // 4 seconds for calm/low intensity
