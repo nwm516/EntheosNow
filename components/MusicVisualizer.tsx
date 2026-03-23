@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Dimensions, Animated, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { MusicServiceManager } from '../services/MusicServiceManager';
-
-const { width, height } = Dimensions.get('window');
+import { HeartbeatVisualizer } from './visualizers/HeartbeatVisualizer';
+import { RippleVisualizer } from './visualizers/RippleVisualizer';
 
 interface MusicVisualizerProps {
     energyState: 'warm' | 'cool';
@@ -13,10 +13,6 @@ interface MusicVisualizerProps {
 export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVisualizerProps) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const musicService = useRef(MusicServiceManager.getInstance()).current;
-
-    const primaryFlow = useRef(new Animated.Value(0)).current;
-    const secondaryFlow = useRef(new Animated.Value(0)).current;
-    const pulseScale = useRef(new Animated.Value(1)).current;
 
     // Initializing music on mount
     useEffect(() => {
@@ -37,74 +33,6 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
                 musicService.stop();
                 };
             }, []);
-
-    useEffect(() => {
-        const baseSpeed = 4000; // 4 seconds for calm/low intensity
-        const speedMultiplier = 1 - (intensityLevel * 0.7); // More intensity = faster
-        const animationDuration = Math.max(1000, baseSpeed * speedMultiplier);
-
-        console.log(`Animation speed for intensity ${intensityLevel.toFixed(2)}: ${animationDuration}ms`);
-
-        // Primary flowing animation
-        const primaryAnimation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(primaryFlow, {
-                    toValue: 1,
-                    duration: animationDuration,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(primaryFlow, {
-                    toValue: 0,
-                    duration: animationDuration,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Secondary flow (different timing for layered effect)
-        const secondaryAnimation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(secondaryFlow, {
-                    toValue: 1,
-                    duration: animationDuration * 1.5,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(secondaryFlow, {
-                    toValue: 0,
-                    duration: animationDuration * 1.5,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Pulse animation
-        const pulseAnimation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseScale, {
-                    toValue: 1 + (intensityLevel * 0.5),    // Higher intensity = bigger pulse
-                    duration: 2000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseScale, {
-                    toValue: 1,
-                    duration: 2000,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Start all animations
-        primaryAnimation.start();
-        secondaryAnimation.start();
-        pulseAnimation.start();
-
-        // Cleanup function - CRITICAL for preventing memory leaks
-        return () => {
-            primaryAnimation.stop();
-            secondaryAnimation.stop();
-            pulseAnimation.stop();
-        };
-    }, [energyState, intensityLevel]);  // Re-run when these change
 
     const getEnergyColors = () => {
         if (energyState === 'warm') {
@@ -141,56 +69,16 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
                 </View>
             </TouchableOpacity>
 
+        <HeartbeatVisualizer
+            intensityLevel={intensityLevel}
+            colors={colors}
+        />
 
-            {/* Primary flowing element */}
-            <Animated.View
-                style={[
-                    styles.flowingElements,
-                    {
-                        backgroundColor: colors.primary,
-                        // Opacity REACTS to intensity
-                        opacity: 0.4 + (intensityLevel * 0.4), // Range: 0.4 to 0.8
-                        transform: [
-                            {
-                                // Position REACTS to animation
-                                translateX: primaryFlow.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [-200, width + 200], // Flows across screen
-                                }),
-                            },
-                            {
-                                // Size REACTS to pulse animation
-                                scale: pulseScale,
-                            },
-                        ],
-                    },
-                ]}
-            />
-
-            {/* Secondary flowing element - flows opposite direction */}
-            <Animated.View
-                style={[
-                    styles.flowingElements,
-                    {
-                        backgroundColor: colors.secondary,
-                        top: height * 0.6, // Different vertical position
-                        opacity: 0.3 + (intensityLevel * 0.3),
-                        transform: [
-                            {
-                                // Flows in OPPOSITE direction
-                                translateX: secondaryFlow.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [width + 200, -200], // Right to left
-                                }),
-                            },
-                            {
-                                scale: pulseScale,
-                            },
-                        ],
-                    },
-                ]}
-            />
-        </View>
+        <RippleVisualizer
+            intensityLevel={intensityLevel}
+            colors={colors}
+        />
+    </View>
     );
 };
 
