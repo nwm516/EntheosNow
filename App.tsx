@@ -1,3 +1,5 @@
+// App.tsx
+
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Dimensions, Animated, PanResponder, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

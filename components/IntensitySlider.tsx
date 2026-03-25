@@ -1,3 +1,5 @@
+// IntensitySlider.tsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, Dimensions, Animated, PanResponder, TouchableOpacity, Text } from 'react-native';
 
@@ -11,9 +13,13 @@ interface IntensitySliderProps {
 }
 
 const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmIntensity }: IntensitySliderProps) => {
-    const startPoint = initialTouchPoint;
+    
+    // Screen center — where the circle will live after the slide animation
+    const CENTER = { x: width / 2, y: height / 2 };
+
     const [intensity, setIntensity] = useState(0);
     const [isTransitioningBack, setIsTransitioningBack] = useState(false);
+    const [isReady, setIsReady] = useState(false); // Blocks interaction until slide completes
     const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
     const [isLongPressing, setIsLongPressing] = useState(false);
     const [showConfirmationPulse, setShowConfirmationPulse] = useState(false);
@@ -30,15 +36,44 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
     const circleScale = useRef(new Animated.Value(1)).current;
     const backgroundOpacity = useRef(new Animated.Value(1)).current;
 
+    // Animated position — starts at tap point, slides to center on mount
+    // Animated.ValueXY holds two values (x and y) as a pair
+    const animatedPosition = useRef(new Animated.ValueXY({
+        x: initialTouchPoint?.x ?? CENTER.x,
+        y: initialTouchPoint?.y ?? CENTER.y,
+    })).current;
+
+    // JS-side mirror of the position — used for gesture math
+    // Animated values can't be read synchronously, so we track
+    // the final destination here for use in angle calculations
+    const currentPosition = useRef({
+        x: initialTouchPoint?.x ?? CENTER.x,
+        y: initialTouchPoint?.y ?? CENTER.y,
+    });
+
     const netRotationRef = useRef(0);
     const lastAngleRef = useRef<number | null>(null);
+
+    // Slide to center on mount
+    useEffect(() => {
+        Animated.timing(animatedPosition, {
+            toValue: { x: CENTER.x, y: CENTER.y },
+            duration: 700,
+            useNativeDriver: false, // Must be false — animating layout properties (left/top)
+                                    // not transforms. Native driver only supports transforms + opacity.
+        }).start(() => {
+            // Animation complete — update JS-side position ref and unlock interaction
+            currentPosition.current = { x: CENTER.x, y: CENTER.y };
+            setIsReady(true);
+        });
+    }, []);
 
     // Fade the swipe hint in/out based on whether intensity is meaningfully set
     useEffect(() => {
         Animated.timing(confirmZoneOpacity, {
             toValue: intensity > 0.1 ? 1 : 0,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
         }).start();
     }, [intensity > 0.1]);
 
@@ -50,12 +85,12 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
             Animated.timing(circleScale, {
                 toValue: 0.1,
                 duration: 300,
-                useNativeDriver: true,
+                useNativeDriver: false,
             }),
             Animated.timing(backgroundOpacity, {
                 toValue: 0,
                 duration: 300,
-                useNativeDriver: true,
+                useNativeDriver: false,
             }),
         ]).start(() => {
             console.log('Back transition complete, returning to diagonal');
@@ -82,15 +117,16 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
     };
 
     const panResponder = PanResponder.create({
-        onStartShouldSetPanResponder: () => !isTransitioningBack,
+        // Block all interaction until slide animation completes
+        onStartShouldSetPanResponder: () => isReady && !isTransitioningBack,
 
         onPanResponderGrant: (evt) => {
-            if (!startPoint) return;
             const { locationX, locationY } = evt.nativeEvent;
+            const pos = currentPosition.current;
 
             const distanceFromCenter = Math.sqrt(
-                Math.pow(locationX - startPoint.x, 2) +
-                Math.pow(locationY - startPoint.y, 2)
+                Math.pow(locationX - pos.x, 2) +
+                Math.pow(locationY - pos.y, 2)
             );
 
             const currentNodeRadius = intensity * 150;
@@ -98,10 +134,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
             const isInsideCircle = distanceFromCenter <= claimRadius;
 
             if (isInsideCircle) {
-                // Seed netRotationRef from current intensity so counter-clockwise
-                // immediately decreases from wherever the user left off
                 netRotationRef.current = intensity * (2 * Math.PI);
-                lastAngleRef.current = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
+                lastAngleRef.current = calculateAngle(locationX, locationY, pos.x, pos.y);
                 setSwipeStartPoint(null);
                 console.log('Spiral started, seeding rotation from intensity:', intensity.toFixed(2));
             } else if (intensity > 0.1 && !isConfirmingSwipe) {
@@ -112,12 +146,11 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
         },
 
         onPanResponderMove: (evt) => {
-            if (!startPoint) return;
             const { locationX, locationY } = evt.nativeEvent;
+            const pos = currentPosition.current;
 
             if (lastAngleRef.current !== null) {
-                // --- Spiral path ---
-                const currentAngle = calculateAngle(locationX, locationY, startPoint.x, startPoint.y);
+                const currentAngle = calculateAngle(locationX, locationY, pos.x, pos.y);
                 const angleDiff = getAngleDifference(currentAngle, lastAngleRef.current);
                 const rotationDegrees = Math.abs(angleDiff * 180 / Math.PI);
 
@@ -133,10 +166,8 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 }
 
             } else if (swipeStartPoint && !isConfirmingSwipe) {
-                // --- Confirmation path ---
                 const deltaX = locationX - swipeStartPoint.x;
                 const deltaY = locationY - swipeStartPoint.y;
-
                 const isRightSwipe = deltaX > 80 && deltaX > Math.abs(deltaY) * 2;
 
                 if (isRightSwipe) {
@@ -146,7 +177,7 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                     Animated.timing(confirmationExplosion, {
                         toValue: 1,
                         duration: 600,
-                        useNativeDriver: true,
+                        useNativeDriver: false,
                     }).start(() => {
                         triggerLongPressConfirmation();
                     });
@@ -157,16 +188,14 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
         onPanResponderRelease: () => {
             setSwipeStartPoint(null);
             lastAngleRef.current = null;
-            // Don't reset netRotationRef here — it gets reseeded from intensity on next grant
             console.log('Released. Intensity:', intensity.toFixed(2));
         },
     });
 
     return (
-        // Outer container gets the CONFIRMATION responder
         <View style={styles.container} {...panResponder.panHandlers}>
 
-            {/* Subtle back button */}
+            {/* Back button */}
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleBack}
@@ -182,20 +211,18 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
 
             {/* Dark animated background */}
             <Animated.View style={[styles.darkBackground, { opacity: backgroundOpacity }]} />
-
-            {/* Subtle moving pattern background */}
             <Animated.View style={[styles.patternBackground, { opacity: backgroundOpacity }]} />
 
-            {/* Starting point indicator */}
-            {startPoint && intensity === 0 && (
-                <View style={[styles.startingDot, {
-                    left: startPoint.x - 8,
-                    top: startPoint.y - 8,
+            {/* Starting dot — travels with the animated position */}
+            {intensity === 0 && (
+                <Animated.View style={[styles.startingDot, {
+                    left: Animated.subtract(animatedPosition.x, 8),
+                    top: Animated.subtract(animatedPosition.y, 8),
                     borderColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
                 }]} />
             )}
 
-            {/* Swipe-right hint arrow — fades in after intensity is set */}
+            {/* Swipe hint arrow */}
             <Animated.View
                 style={[styles.confirmZoneHint, { opacity: confirmZoneOpacity }]}
                 pointerEvents="none"
@@ -203,26 +230,24 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 <Text style={styles.swipeHintArrow}>›</Text>
             </Animated.View>
 
-            {/* The intensity circle — VISUAL ONLY, no panHandlers */}
-            {startPoint && (
-                <Animated.View
-                    style={[styles.focusCircle, {
-                        left: startPoint.x - (intensity * 150),
-                        top: startPoint.y - (intensity * 150),
-                        width: intensity * 300,
-                        height: intensity * 300,
-                        backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
-                        opacity: 0.8 + (intensity * 0.2),
-                        transform: [{ scale: circleScale }]
-                    }]}
-                />
-            )}
+            {/* Intensity circle — anchored to animated position */}
+            <Animated.View
+                style={[styles.focusCircle, {
+                    left: Animated.subtract(animatedPosition.x, intensity * 150),
+                    top: Animated.subtract(animatedPosition.y, intensity * 150),
+                    width: intensity * 300,
+                    height: intensity * 300,
+                    backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
+                    opacity: 0.8 + (intensity * 0.2),
+                    transform: [{ scale: circleScale }]
+                }]}
+            />
 
             {/* Glow effect */}
-            {startPoint && intensity > 0.3 && (
+            {intensity > 0.3 && (
                 <Animated.View style={[styles.glowCircle, {
-                    left: startPoint.x - (intensity * 180),
-                    top: startPoint.y - (intensity * 180),
+                    left: Animated.subtract(animatedPosition.x, intensity * 180),
+                    top: Animated.subtract(animatedPosition.y, intensity * 180),
                     width: intensity * 360,
                     height: intensity * 360,
                     backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
@@ -231,12 +256,12 @@ const IntensitySlider = ({ selectedSide, initialTouchPoint, onBack, onConfirmInt
                 }]} />
             )}
 
-            {/* Confirmation expansion animation */}
-            {isConfirmingSwipe && startPoint && (
+            {/* Confirmation expansion */}
+            {isConfirmingSwipe && (
                 <Animated.View
                     style={[styles.confirmationExpansion, {
-                        left: startPoint.x - (width * 0.5),
-                        top: startPoint.y - (height * 0.5),
+                        left: CENTER.x - (width * 0.5),
+                        top: CENTER.y - (height * 0.5),
                         width: width,
                         height: height,
                         backgroundColor: selectedSide === 'warm' ? '#FF6B35' : '#4A90E2',
