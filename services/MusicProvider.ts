@@ -1,3 +1,5 @@
+import { TrackEntry } from './TrackRegistry';
+
 // Abstract interface for all music providers
 export interface MusicProvider {
     name: string;
@@ -9,6 +11,7 @@ export interface MusicProvider {
     setVolume(volume: number): Promise<void>;
     isPlaying(): boolean;
     cleanup(): Promise<void>;
+    preloadTrack?(trackEntry: TrackEntry): Promise<void>;
 }
 
 export interface Track {

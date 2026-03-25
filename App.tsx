@@ -5,6 +5,7 @@ import { StyleSheet, View, Dimensions, Animated, PanResponder, Easing } from 're
 import { LinearGradient } from 'expo-linear-gradient';
 import { IntensitySlider } from './components/IntensitySlider';
 import {MusicVisualizer} from "./components/MusicVisualizer";
+import { MusicServiceManager } from './services/MusicServiceManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,15 +71,19 @@ export default function App() {
         setTouchPoint(point);
         setIsTransitioning(true);
 
-        // Start the transition animation
+        // Initialize provider and preload tracks while user is on intensity screen
+        // Fire-and-forget. No await, runs silently in background
+        const musicService = MusicServiceManager.getInstance();
+        musicService.initializeLocalProvider().then(() => {
+            musicService.preloadTracksForState(side);
+        });
+
         Animated.parallel([
-            // Fade both triangles to black
             Animated.timing(backgroundOpacity, {
                 toValue: 0,
                 duration: 800,
                 useNativeDriver: true,
             }),
-            // Grow circle at touch point
             Animated.timing(circleScale, {
                 toValue: 1,
                 duration: 800,
