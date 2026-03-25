@@ -100,7 +100,7 @@ export const RippleVisualizer = ({ intensityLevel, colors }: RippleVisualizerPro
 
     // Ripple speed — higher intensity means rings spawn and travel faster
     const baseDuration = 2800; // slow, wide ripples at low intensity
-    const minDuration = 2600;   // quick tight ripples at high intensity
+    const minDuration = 1800;   // quick tight ripples at high intensity
     const rippleDuration = Math.max(
         minDuration,
         baseDuration - (effectiveIntensity * (baseDuration - minDuration))
@@ -108,7 +108,7 @@ export const RippleVisualizer = ({ intensityLevel, colors }: RippleVisualizerPro
 
     // Spacing between rings — at low intensity rings are far apart (peaceful)
     // At high intensity rings overlap (urgent, dense)
-    const ringCount = Math.round(1 + (1 - effectiveIntensity) * 1); // Range: 1 to 2 rings
+    const ringCount = Math.round(2 + (1 - effectiveIntensity) * 2); // Range: 2 to 4 rings
     const ringSpacing = rippleDuration / ringCount;
 
     // Max radius — ripples always reach screen edge regardless of intensity
@@ -117,7 +117,7 @@ export const RippleVisualizer = ({ intensityLevel, colors }: RippleVisualizerPro
 
     // Ring thickness decreases slightly as intensity increases —
     // fast ripples feel lighter, slow ripples feel more substantial
-    const ringBorderWidth = 4 + (effectiveIntensity * 4); // Range: 4 to 8
+    const ringBorderWidth = 6 + (effectiveIntensity * 4); // Range: 6 to 10
 
     return (
         <View style={styles.container}>

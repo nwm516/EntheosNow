@@ -4,17 +4,31 @@ import { MusicServiceManager } from '../services/MusicServiceManager';
 import { HeartbeatVisualizer } from './visualizers/HeartbeatVisualizer';
 import { RippleVisualizer } from './visualizers/RippleVisualizer';
 
+const INTENSITY_THRESHOLD = 0.7;
+
 interface MusicVisualizerProps {
     energyState: 'warm' | 'cool';
-    intensityLevel: number; // 0 to 1
-    onBack?: () => void;    // Add callback for back navigation
+    intensityLevel: number;
+    onBack?: () => void;
 }
+
+// Resolves which visualizer style to render based on energy state and intensity.
+// Adding a new style later = add a new return value here and a new case in renderVisualizer.
+const resolveVisualizer = (
+    energyState: 'warm' | 'cool',
+    intensity: number
+): string => {
+    if (energyState === 'warm') {
+        return intensity < INTENSITY_THRESHOLD ? 'heartbeat' : 'heartbeat-high';
+    } else {
+        return intensity < INTENSITY_THRESHOLD ? 'ripple' : 'ripple-high';
+    }
+};
 
 export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVisualizerProps) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const musicService = useRef(MusicServiceManager.getInstance()).current;
 
-    // Initializing music on mount
     useEffect(() => {
         const initMusic = async () => {
             try {
@@ -26,37 +40,84 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             }
         };
 
-            initMusic();
+        initMusic();
 
-            // Cleanup on unmount
-            return () => {
-                musicService.stop();
-                };
-            }, []);
+        return () => {
+            musicService.stop();
+        };
+    }, []);
 
     const getEnergyColors = () => {
         if (energyState === 'warm') {
             return {
-                primary: '#FF6B35',     // Warm orange
-                secondary: '#FF4500',   // Deeper orange-red
-                accent: '#FFD700',      // Golden highlights
-                background: '#1a0600',  // Very dark warm background
+                primary: '#FF6B35',
+                secondary: '#FF4500',
+                accent: '#FFD700',
+                background: '#1a0600',
             };
         } else {
             return {
-                primary: '#4A90E2',     // Cool blue
-                secondary: '#1E90FF',   // Brighter blue
-                accent: '#00CED1',      // Cyan highlights
-                background: '#000615',  // Very dark cool background
+                primary: '#4A90E2',
+                secondary: '#1E90FF',
+                accent: '#00CED1',
+                background: '#000615',
             };
         }
     };
 
     const colors = getEnergyColors();
+    const visualizerKey = resolveVisualizer(energyState, intensityLevel);
+
+    // Renders the correct visualizer component based on the resolved key.
+    // Placeholder cases fall back to the base style until high-intensity
+    // components are designed and built.
+    const renderVisualizer = () => {
+        switch (visualizerKey) {
+            case 'heartbeat':
+                return (
+                    <HeartbeatVisualizer
+                        intensityLevel={intensityLevel}
+                        colors={colors}
+                    />
+                );
+            case 'heartbeat-high':
+                // Placeholder — HeartbeatVisualizer until high intensity warm style is built
+                return (
+                    <HeartbeatVisualizer
+                        intensityLevel={intensityLevel}
+                        colors={colors}
+                    />
+                );
+            case 'ripple':
+                return (
+                    <RippleVisualizer
+                        intensityLevel={intensityLevel}
+                        colors={colors}
+                    />
+                );
+            case 'ripple-high':
+                // Placeholder — RippleVisualizer until high intensity cool style is built
+                return (
+                    <RippleVisualizer
+                        intensityLevel={intensityLevel}
+                        colors={colors}
+                    />
+                );
+            default:
+                // Safety fallback — should never reach here
+                console.warn(`Unknown visualizer key: ${visualizerKey}`);
+                return (
+                    <HeartbeatVisualizer
+                        intensityLevel={intensityLevel}
+                        colors={colors}
+                    />
+                );
+        }
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Back button - consistent with IntensitySlider design */}
+            {/* Back button */}
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={onBack}
@@ -64,34 +125,19 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             >
                 <View style={styles.backIcon}>
                     <View style={[styles.backArrow, {
-                        borderRightColor: colors.primary    // Matches energy state color
+                        borderRightColor: colors.primary
                     }]} />
                 </View>
             </TouchableOpacity>
 
-        <HeartbeatVisualizer
-            intensityLevel={intensityLevel}
-            colors={colors}
-        />
-
-        <RippleVisualizer
-            intensityLevel={intensityLevel}
-            colors={colors}
-        />
-    </View>
+            {renderVisualizer()}
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    flowingElements: {
-        position: 'absolute',
-        width: 300,
-        height: 80,
-        borderRadius: 40,
-        // Slightly transparent floating shapes
     },
     backButton: {
         position: 'absolute',
@@ -117,5 +163,5 @@ const styles = StyleSheet.create({
         borderRightWidth: 12,
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
-    }
+    },
 });
