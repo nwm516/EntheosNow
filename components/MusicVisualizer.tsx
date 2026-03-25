@@ -3,6 +3,8 @@ import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { MusicServiceManager } from '../services/MusicServiceManager';
 import { HeartbeatVisualizer } from './visualizers/HeartbeatVisualizer';
 import { RippleVisualizer } from './visualizers/RippleVisualizer';
+import { BurstVisualizer } from './visualizers/BurstVisualizer';
+import { CrystalVisualizer } from './visualizers/CrystalVisualizer';
 
 const INTENSITY_THRESHOLD = 0.7;
 
@@ -83,7 +85,7 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             case 'heartbeat-high':
                 // Placeholder — HeartbeatVisualizer until high intensity warm style is built
                 return (
-                    <HeartbeatVisualizer
+                    <BurstVisualizer
                         intensityLevel={intensityLevel}
                         colors={colors}
                     />
@@ -98,7 +100,7 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             case 'ripple-high':
                 // Placeholder — RippleVisualizer until high intensity cool style is built
                 return (
-                    <RippleVisualizer
+                    <CrystalVisualizer
                         intensityLevel={intensityLevel}
                         colors={colors}
                     />

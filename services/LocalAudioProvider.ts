@@ -33,28 +33,38 @@ export class LocalAudioProvider implements MusicProvider {
     }
 
     async loadTrack(trackId: string): Promise<void> {
-        try{
+        try {
+            // Skip loading if this track is already loaded — rewind and reuse
+            if (this.currentTrack?.id === trackId && this.sound) {
+                console.log(`Track ${trackId} already loaded, reusing`);
+                await this.sound.setPositionAsync(0);
+                return;
+            }
+
             // Unload previous track if exists
             if (this.sound) {
                 await this.sound.unloadAsync();
                 this.sound = null;
             }
 
-            // Check if track exists
             const audioFile = this.trackMap[trackId];
             if (!audioFile) {
                 throw new Error(`Track ${trackId} not found`);
             }
 
-            // Load new track
             const { sound } = await Audio.Sound.createAsync(
                 audioFile,
-                { shouldPlay: false,
-                    volume: 1.0,             },
+                { shouldPlay: false, volume: 1.0 },
                 this.onPlaybackStatusUpdate
             );
 
             this.sound = sound;
+            this.currentTrack = {
+                id: trackId,
+                name: trackId,
+                energyType: trackId.split('-')[0] as 'warm' | 'cool',
+                intensityLevel: trackId.split('-')[1] as 'low' | 'medium' | 'high',
+            };
             this.playing = false;
 
             console.log(`Loaded track: ${trackId}`);

@@ -15,6 +15,12 @@ export class MusicServiceManager {
     }
 
     async initializeLocalProvider(): Promise<void> {
+        // Skip if already initialized — don't recreate on every mount
+        if (this.activeProvider) {
+            console.log('Music service already initialized, reusing provider');
+            return;
+        }
+
         const provider = new LocalAudioProvider();
         await provider.initialize();
         this.activeProvider = provider;
