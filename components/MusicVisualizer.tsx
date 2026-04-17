@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Animated } from 'react-native';
 import { MusicServiceManager } from '../services/MusicServiceManager';
 import { HeartbeatVisualizer } from './visualizers/HeartbeatVisualizer';
 import { RippleVisualizer } from './visualizers/RippleVisualizer';
 import { BurstVisualizer } from './visualizers/BurstVisualizer';
 import { CrystalVisualizer } from './visualizers/CrystalVisualizer';
+import { TrackEntry } from '../services/TrackRegistry';
 
 const INTENSITY_THRESHOLD = 0.7;
 
@@ -31,6 +32,10 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
     const [isPlaying, setIsPlaying] = useState(false);
     const musicService = useRef(MusicServiceManager.getInstance()).current;
 
+    const [showTrackInfo, setShowTrackInfo] = useState(false);
+    const trackInfoOpacity = useRef(new Animated.Value(0)).current;
+    const [currentTrack, setCurrentTrack] = useState<TrackEntry | null>(null);
+
     useEffect(() => {
         const initMusic = async () => {
             try {
@@ -40,6 +45,8 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             } catch (error) {
                 console.error('Failed to initialize music:', error);
             }
+            const track = musicService.getCurrentTrack();
+            setCurrentTrack(track);
         };
 
         initMusic();
@@ -48,6 +55,23 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
             musicService.stop();
         };
     }, []);
+
+    const toggleTrackInfo = () => {
+        if (showTrackInfo) {
+            Animated.timing(trackInfoOpacity, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+            }).start(() => setShowTrackInfo(false));
+        } else {
+            setShowTrackInfo(true);
+            Animated.timing(trackInfoOpacity, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: false,
+            }).start();
+        }
+    };
 
     const getEnergyColors = () => {
         if (energyState === 'warm') {
@@ -132,6 +156,34 @@ export const MusicVisualizer = ({ energyState, intensityLevel, onBack }: MusicVi
                 </View>
             </TouchableOpacity>
 
+            {/* Music note icon — only shows if current track has metadata */}
+            {currentTrack?.title && (
+                <TouchableOpacity
+                    style={styles.trackInfoButton}
+                    onPress={toggleTrackInfo}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[styles.musicNoteIcon, { color: colors.primary }]}>♪</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* Track info overlay */}
+            {showTrackInfo && (
+                <Animated.View
+                    style={[styles.trackInfoOverlay, { opacity: trackInfoOpacity }]}
+                >
+                    <TouchableOpacity
+                        style={styles.trackInfoContent}
+                        onPress={toggleTrackInfo}
+                        activeOpacity={1}
+                    >
+                        <Text style={styles.trackTitle}>{currentTrack?.title}</Text>
+                        <Text style={styles.trackArtist}>{currentTrack?.artist}</Text>
+                        <Text style={styles.trackLicense}>{currentTrack?.license}</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            )}
+
             {renderVisualizer()}
         </View>
     );
@@ -165,5 +217,54 @@ const styles = StyleSheet.create({
         borderRightWidth: 12,
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
+    },
+    trackInfoButton: {
+        position: 'absolute',
+        bottom: 100,
+        right: 30,
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    musicNoteIcon: {
+        fontSize: 40,
+        opacity: 0.6,
+    },
+    trackInfoOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 900,
+    },
+    trackInfoContent: {
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+    trackTitle: {
+        color: 'rgba(255, 255, 255, 0.95)',
+        fontSize: 22,
+        fontWeight: '300',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    trackArtist: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 16,
+        fontWeight: '300',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    trackLicense: {
+        color: 'rgba(255, 255, 255, 0.4)',
+        fontSize: 12,
+        fontWeight: '300',
+        textAlign: 'center',
     },
 });

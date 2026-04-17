@@ -1,6 +1,6 @@
 import { MusicProvider } from './MusicProvider';
 import { LocalAudioProvider } from './LocalAudioProvider';
-import { TrackRegistry } from './TrackRegistry';
+import { TrackRegistry, TrackEntry } from './TrackRegistry';
 
 export class MusicServiceManager {
     private static instance: MusicServiceManager;
@@ -95,5 +95,12 @@ export class MusicServiceManager {
             await this.activeProvider.cleanup();
             this.activeProvider = null;
         }
+    }
+
+    getCurrentTrack(): TrackEntry | null {
+        if (this.activeProvider instanceof LocalAudioProvider) {
+            return this.activeProvider.getCurrentTrack();
+        }
+        return null;
     }
 }

@@ -5,7 +5,7 @@ import { TrackEntry } from './TrackRegistry';
 export class LocalAudioProvider implements MusicProvider {
     name = 'Local';
     private sound: Audio.Sound | null = null;
-    private currentTrackId: string | null = null;
+    private currentTrackEntry: TrackEntry | null = null;
     private playing: boolean = false;
 
     // Cache for preloaded sounds — keyed by track ID
@@ -24,7 +24,7 @@ export class LocalAudioProvider implements MusicProvider {
     // Preloads a track into memory without playing it
     async preloadTrack(trackEntry: TrackEntry): Promise<void> {
         // Skip if already preloaded or currently active
-        if (this.preloadedSounds[trackEntry.id] || this.currentTrackId === trackEntry.id) {
+        if (this.preloadedSounds[trackEntry.id] || this.currentTrackEntry?.id === trackEntry.id) {
             return;
         }
 
@@ -45,7 +45,7 @@ export class LocalAudioProvider implements MusicProvider {
     async loadTrack(trackEntry: TrackEntry): Promise<void> {
         try {
             // Already loaded and active — just rewind
-            if (this.currentTrackId === trackEntry.id && this.sound) {
+            if (this.currentTrackEntry?.id === trackEntry.id && this.sound) {
                 console.log(`Track ${trackEntry.id} already loaded, rewinding`);
                 await this.sound.setPositionAsync(0);
                 return;
@@ -74,7 +74,7 @@ export class LocalAudioProvider implements MusicProvider {
                 this.sound = sound;
             }
 
-            this.currentTrackId = trackEntry.id;
+            this.currentTrackEntry = trackEntry;
             this.playing = false;
             console.log(`Loaded track: ${trackEntry.id}`);
 
@@ -127,6 +127,10 @@ export class LocalAudioProvider implements MusicProvider {
         this.preloadedSounds = {};
         this.playing = false;
         console.log('LocalAudioProvider cleaned up');
+    }
+
+    getCurrentTrack(): TrackEntry | null {
+        return this.currentTrackEntry ?? null;
     }
 
     private onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
